@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Пиратский Квест</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; background: #222; }
+        #map { height: 100vh; width: 100%; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // --- НАСТРОЙКИ ---
+        // 1. Границы реального парка (те же, что в прошлом примере)
+        const world = {
+            minLat: 55.745,
+            maxLat: 55.775,
+            minLon: 37.670,
+            maxLon: 37.730
+        };
+
+        // 2. Размеры твоей картинки острова в пикселях
+        const mapImage = {
+            width: 1000,
+            height: 1000,
+            url: 'island.jpg' // Путь к твоему файлу
+        };
+
+        // --- ИНИЦИАЛИЗАЦИЯ КАРТЫ ---
+        // Используем L.CRS.Simple, чтобы координаты были в пикселях, а не в градусах
+        const map = L.map('map', {
+            crs: L.CRS.Simple, 
+            minZoom: -1
+        });
+
+        // Определяем границы изображения для Leaflet
+        const bounds = [[0, 0], [mapImage.height, mapImage.width]];
+        L.imageOverlay(mapImage.url, bounds).addTo(map);
+        map.fitBounds(bounds);
+
+        // Создаем маркер игрока (например, иконка пирата)
+        const playerMarker = L.marker([0, 0]).addTo(map);
+
+        // --- ФУНКЦИЯ ПЕРЕВОДА КООРДИНАТ ---
+        function mapRealToGame(lat, lon) {
+            // Вычисляем, какой процент пути прошел пользователь от min до max
+            const xPercent = (lon - world.minLon) / (world.maxLon - world.minLon);
+            const yPercent = (world.maxLat - lat) / (world.maxLat - world.minLat); // Инвертируем Y, т.к. в картинках 0 вверху
+
+            // Переводим проценты в пиксели
+            const x = xPercent * mapImage.width;
+            const y = yPercent * mapImage.height;
+
+            return [y, x]; // Leaflet Simple CRS использует [y, x]
+        }
+
+        // --- ГЕОЛОКАЦИЯ ---
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition((position) => {
+                const { latitude, longitude } = position.coords;
+
+                // Превращаем реальные координаты в координаты на картинке
+                const gamePos = mapRealToGame(latitude, longitude);
+
+                // Перемещаем маркер пирата по острову
+                playerMarker.setLatLng(gamePos);
+                
+                // Центрируем карту на игроке
+                map.panTo(gamePos);
+
+            }, (err) => console.error(err), { enableHighAccuracy: true });
+        }
+    </script>
+</body>
+</html>
